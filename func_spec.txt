@@ -1,0 +1,109 @@
+Hexer Game
+
+Functional Specification
+
+  Description:  	The system is a Hexer game in which the user uses 5 switches to attempt to manipulate  
+			the game configuration displayed on LEDs into the winning configuration via 5 legal moves.
+			There is 7 segment display for indicating the current move number, and reset switches which
+			allow both manual reset to a given configuration or game reset to a random configuration. 
+			On game start there is a speaker which plays a short soundbyte, and upon winning the game, 
+			the speaker also plays a distinct short soundbyte. In order to win the game, the user must 
+			manipulate the game board via the 5 legal moves until all of the LEDs in the 15 LED display
+			are turned ON.
+
+  Global Variables:	WIN_STATE: The game board configuration corresponding to a victory for the player for 
+				   the purpose of comparing the current game configuration to.
+
+
+  Inputs:                All user input occurs through 6 switches:
+			 _________________________________________________________________________________________
+                        |  Switch Name  |  Switch Type  |                        Description                      |
+			|---------------|---------------|---------------------------------------------------------|
+			|     START     |  Pushbutton   | Used to start a new game. Must be held down while one of|
+			|		|		| either "Random Reset", "Manual Reset 1", or "Manual     |
+			|		|		| Reset 0" is selected to indicate whether a random or    |
+			|		|		| custom configuration is desired.			  |
+			|---------------|---------------|---------------------------------------------------------|
+			|   Move 1 /    |  Pushbutton   | When pressed during game play, this switch executes an  |
+			| Random Reset	|        	| inversion of the inner hexagon on the game board, i.e   |
+			|    (White)    |		| inversion of the states of LEDs 3, 4, 7, 9, 12, and 13. |
+			|		|		|							  |
+			|		|		| When pressed while the start button is held, this switch|
+			|		|		| sets the initial game configuration to a psuedo-random  |
+			|		|		| configuration.					  |
+			|---------------|---------------|---------------------------------------------------------|
+			|   Move 2 /    |  Pushbutton   | When pressed during game play, this switch executes a   |
+			| Manual Reset 0|		| clockwise rotation of the right hexagon on the game     |
+			|    (Black)    |		| board consisting of LEDs 4, 5, 10, 14, 13, and 8        |
+			|		|		|							  |
+			|		|		| When pressed while the START button is held, this switch|
+			|		|		| shifts an OFF LED into the game configuration, which    |
+			|		|		| acts as a shift register in manual reset mode.          |
+			|---------------|---------------|---------------------------------------------------------|
+			|   Move 3 /    |  Pushbutton   | When pressed during game play, this switch executes a   |  
+			| Manual Reset 1|		| counterclockwise rotation of the states of the left     |
+			|    (Blue)     |		| hexagon in the game board, consisting of LEDS 2, 3, 8,  |
+			|		|		| 12, 11, and 6.					  |
+			|		|		|							  |
+			|		|		| When pressed while the START button is held, this switch|
+			|		|		| shifts an ON LED into the game configuration, which acts|
+			|		|		| as a shift register in manual reset mode.		  |
+			|---------------|---------------|---------------------------------------------------------|
+			|    Move 4     |  Pushbutton   | When pressed, this switch executes a clockwise rotation |
+			|     (Red)     |		| of the upper triangle in the game board, consisting of  |
+			|		|		| LEDS 1, 4, 9, 14, 13, 12, 11, 7, and 3.                 |
+			|---------------|---------------|---------------------------------------------------------|
+			|    Move 5     |  Pushbutton   | When pressed this switch executes a counterclockwise    |
+			|   (Green)     |		| rotation of the lower triangle in the game board,       |
+			|		|		| consisting of LEDs 2, 3, 4, 5, 9, 13, 15, 12, and 7.    |
+			|_______________|_______________|_________________________________________________________|
+
+
+  Outputs:		4-digit 7-segment display:  Displays the current number of moves used by the player in
+						    attempting to solve the puzzle since last resetting using the 
+						    START button. When a user solves a puzzle which was initialized 
+						    using the "Random Reset" option, the display indicates if the
+						    player's number of moves is within the 10 lowest ever achieved
+						    for a random game initialization on the system.
+
+			15-LED display:             Displays the state of the current game board
+
+			Speaker:                    Plays a sound effect which indicates the start of a new game
+						    when one is started, and plays a victorious sound effect when
+                                                    the player solves the puzzle.
+			
+			SD Card: 		    The top 10 scores lowest move numbers ever achieved by a user 
+						    who initialized a game using the "Random Reset" option on the
+						    system are stored on this card. Whenever a player wins from 
+						    a random initialization, their number of moves is compared to
+						    those stored on this card, and the player is informed if they 
+						    are within the top 10.
+
+
+  User Interface: 	The current game state is displayed on the 15 LEDs. The current number of moves used by 
+			the player is displayed on the 4-digit 7 segment LED display. The user can use any of the 5
+			switches corresponding to moves to manipulate the LED's in the game state as described above
+			in "inputs". At any time, the user may reset the game state and the moves counter by holding  
+			the START button, and pressing one of the random or manual reset switches. When these are 
+                        pressed at the same time as the start switch they will reset the game as described in the 
+                        "inputs" section above. Any time a user achieves a top 10 lowest move number after 
+                        initializing a puzzle from a random reset, they are informed of their placement in the 
+			top 10.
+
+  Error Handling:	If there is a power failure, the system will reset to a psuedo-random configuration of the
+			game board, with the 4-digit display showing 0 moves. The data saved on the SD card will 
+			remain saved on the SD card, and only the previous current state of the game will be lost.
+
+			If a player presses the START button but does not select one of either the "Random Reset"
+			or the "Manual Reset _" switches, then the button will have no effect. The 4 digit display
+			and 15 LED displays will continue to display the data of the current game session.
+
+			If the move number used by the player overflows the 4 digit display, the system automatically 
+			executes a psuedo-random reset and resets the move counter back to 0
+
+  Algorithms: 		None
+
+  Data Structures:	The current game board is stored as a 15 bit array, with one bit for the status of each
+			LED. We then have 8 bits which indicate the current number of moves used by the player.
+
+  Limitations:		None

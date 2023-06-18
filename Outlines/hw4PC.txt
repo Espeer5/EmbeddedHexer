@@ -1,0 +1,294 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                            ;
+;                              Hexer Game Main Loop                          ;
+;                                 Code Outline                               ;
+;                 Microprocessor-Based Hexer Game (AVR version)              ;
+;                                                                            ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Game Mainloop
+
+
+; PlayGame
+;
+; Description:        This procedure is the main loop for the hexer game. In 
+;                     the loop, the user input is taken from the switches and 
+;                     the game state updated, then the game state is displayed. 
+;                     At the appropriate times, the speaker plays sounds.
+;
+; Operation:          The loop continually gets debounced user input from the
+;                     switches, then alters the local versions of the game state 
+;                     variables. These are then passed to the display. 
+;                     After any move by the user, check if the game is won and 
+;                     if so, inform the user of their score.
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    GameBoard - a 16 bit mask indicating for each LED if it is
+;                                 on or off. The bits in the mask give the game LEDs
+;                                 in the following order:
+;                                 [9, 1, 5, _, 10, 4, 3, 2, 13, 11, 8, 15, 14, 12, 7, 6]
+;                     MoveNum - the current number of moves taken by the user in hex
+;                     temp - temporary storage for one bit of the game LEDs for 
+;                            doing rotations
+; Shared Variables:   None
+;
+; Input:              None
+; Ouput:              None
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: TBD
+; 
+; Author:             Edward Speer
+; Last Modified:      6/11/23
+
+PlayGame:
+
+    ClearDisplay()
+    GameBoard = RandomGame()
+    MoveNum = 0
+    PlayStartSound()
+
+    WHILE 1=1 THEN
+
+        DisplayGameLEDs(GameBoard)
+        DisplayHex(MoveNum)
+
+        IF (GameBoard OR [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]) = 
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] THEN 
+            PlayWinSound()
+            BlinkSegs()
+            GameBoard = RadomGame()
+            MoveNum = 0
+
+        SELECT WITH GetSwitches()
+
+            CASE [00010000]:
+                GameBoard = GameBoard XOR [1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0]
+                IncrementMoveNum()
+            
+            CASE [0, 0, 0, 0, 0, 1, 0, 0]:
+                temp = GameBoard[13]
+                GameBoard[13] = GameBoard[10]
+                GameBoard[10] = GameBoard[5]
+                GameBoard[5] = GamBoard[7]
+                GameBoard[7] = GameBoard[3]
+                GameBoard[3] = GameBoard[11]
+                GameBoard[11] = temp
+                IncrementMoveNum()
+
+            CASE [0, 1, 0, 0, 0, 0, 0, 0]:
+                temp = GameBoard[8]
+                GameBoard[8] = GameBoard[9]
+                GameBoard[9] = GameBoard[5]
+                GameBoard[5] = GameBoard[2]
+                GameBoard[2] = GameBoard[6]
+                GameBoard[6] = GameBoard[0]
+                GameBoard[0] = temp
+                IncrementMoveNum()
+
+            CASE [0, 0, 0, 0, 1, 0, 0, 0]:
+                temp = GameBoard[14]
+                GameBoard[14] = GameBoard[9]
+                GameBoard[9] = GameBoard[1]
+                GameBoard[1] = GameBoard[6]
+                GameBoard[6] = GameBoard[2]
+                GameBoard[2] = GameBoard[7]
+                GameBoard[7] = GameBoard[3]
+                GameBoard[3] = GameBoard[15]
+                GameBoard[15] = GameBoard[10]
+                GameBoard[10] = temp
+                IncrementMoveNum()
+
+            CASE [0, 0, 1, 0, 0, 0, 0, 0]:
+                temp = GameBoard[4]
+                GameBoard[4] = GameBoard[2]
+                GameBoard[2] = GameBoard[1]
+                GameBoard[1] = GameBoard[8]
+                GameBoard[8] = GameBoard[9]
+                GameBoard[9] = GameBoard[10]
+                GameBoard[10] = GameBoard[13]
+                GameBoard[13] = GameBoard[15]
+                GameBoard[15] = GameBoard[7]
+                GameBoard[7] = temp
+                IncrementMoveNum()
+
+            CASE [0, 0, 0, 0, 0, 0, 0, 1, 0]:
+                GameBoard = RandomGame()
+                MoveNum = 0
+                PlayStartSound()
+
+            CASE [0, 0, 1, 0, 0, 0, 1, 0, 0]:
+                GameBoard[4] = GameBoard[3]
+                GameBoard[3] = GameBoard[7]
+                GameBoard[7] = GameBoard[2]
+                GameBoard[2] = GameBoard[6]
+                GameBoard[6] = GameBoard[11]
+                GameBoard[11] = GameBoard[15]
+                GameBoard[15] = GameBoard[5]
+                GameBoard[5] = GameBoard[1]
+                GameBoard[1] = GameBoard[0]
+                GameBoard[0] = GameBoard[13]
+                GameBoard[13] = GameBoard[10]
+                GameBoard[10] = GameBoard[9]
+                GameBoard[9] = GameBoard[8]
+                GameBoard[8] = GameBoard[14]
+                GameBoard[14] = 0
+                MoveNum = 0
+                PlayStartSound()
+
+            CASE [0, 1, 0, 0, 0, 0, 1, 0, 0]:
+                GameBoard[4] = GameBoard[3]
+                GameBoard[3] = GameBoard[7]
+                GameBoard[7] = GameBoard[2]
+                GameBoard[2] = GameBoard[6]
+                GameBoard[6] = GameBoard[11]
+                GameBoard[11] = GameBoard[15]
+                GameBoard[15] = GameBoard[5]
+                GameBoard[5] = GameBoard[1]
+                GameBoard[1] = GameBoard[0]
+                GameBoard[0] = GameBoard[13]
+                GameBoard[13] = GameBoard[10]
+                GameBoard[10] = GameBoard[9]
+                GameBoard[9] = GameBoard[8]
+                GameBoard[8] = GameBoard[14]
+                GameBoard[14] = 1
+                MoveNum = 0
+                PlayStartSound()
+
+            DEFAULT:
+                NOP
+        
+        ENDSELECT
+
+    ENDWHILE
+
+
+;Other functions
+
+; RandomGame
+;
+; Description:        Generates a random 16 bit game LED mask to initialize the 
+;                     game board randomly for the hexer game.
+;
+; Operation:          Generates a random 16 bit number, then masks out bit 
+;                     12 since this bit does not correspond to a game LED.
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    lsfr - 16 bit random number being generated
+
+; Shared Variables:   None
+;
+; Input:              None
+; Ouput:              None
+;
+; Error Handling:     None
+;
+; Algorithms:         Generates a random number using Fibonnacci LSFR
+; Data Structures:    None
+;
+; Registers Changed: TBD
+; 
+; Author:             Edward Speer
+; Last Modified:      6/11/23
+
+RandomGame:
+
+    feedback <- ((lsfr >> 3) ^ (lsfr >> 12) ^ (lsfr >> 14) ^ (lsfr >> 1)) & 0x01
+    lfsr <- (lsfr << 1) | feedback
+
+    lsfr[12] = 0 
+    return lsfr
+
+
+; IncrementMoveNum
+;
+; Description:        Increments the 16 bit hex number representing the number 
+;                     of user moves by 1. Wraps around to 0 if a user has 
+;                     somehow managed to use 9999 moves
+;
+; Operation:          Increments the lowest digit which is not 9 by 1, and for 
+;                     any digit which is 9, sets to 0
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    None
+
+; Shared Variables:   MoveNum - the number of moves used by the user 
+;
+; Input:              None
+; Ouput:              None
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: TBD
+; 
+; Author:             Edward Speer
+; Last Modified:      6/11/23
+
+IncrementMoveNum:
+
+    If LowByte(MoveNum) = 9 THEN
+        LowByte(MoveNum) = 0
+        IF Byte2(MoveNum) = 9 THEN
+            Byte2(MoveNum) = 0
+            IF Byte3(MoveNum) = 9 THEN
+                Byte3(moveNum) = 0
+                IF Byte4(MoveNum) = 9 THEN
+                    MoveNum = 0
+                ELSE
+                    Byte4(MoveNum) = Byte4(MoveNum) + 1
+            ELSE
+                Byte3(MoveNum) = Byte3(MoveNum) + 1
+        ELSE 
+            Byte2(MoveNum) = Byte2(MoveNum) + 1
+    ELSE LowByte(MoveNum) = LowByte(MoveNum) + 1
+
+
+;PlaySound
+;
+; Description:        Plays the sound stored in the array at the passed in index
+;
+; Operation:          Plays each frequency stored in the passed in sound array 
+;                     for the duration of an eighth note at app. 100 bpm 
+;
+; Arguments:          SoundArray - pointer to a sound array 
+; Return Value:       None
+;
+; Local Variables:    None
+;
+; Shared Variables:   None
+;
+; Input:              None
+; Ouput:              None
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: TBD
+; 
+; Author:             Edward Speer
+; Last Modified:      6/11/23
+
+PlayStartSound:
+    
+    FOR i=0 TO length(SoundArray) UPDATE i + 1
+        counter = 2666667
+        REPEAT 
+            timer = timer - 1
+        UNTIL timer = 0 
+        PlayNote(SoundArray[i])
+    PlayNote(0)

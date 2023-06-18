@@ -1,0 +1,270 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                            ;
+;                               Display Routines                             ;
+;                                 Code Outline                               ;
+;                 Microprocessor-Based Hexer Game (AVR version)              ;
+;                                                                            ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Hardware Initialization
+
+; LEDBoardInit
+;
+; Description:        This procedure initializes the I/O ports needed to display 
+;                     data on the 7 segment display and the 15 LED display in 
+;                     the Hexer game. It also initializes the timer interrupts 
+;                     via which the display is shown.
+;
+; Operation:          Sets ports C and D as outputs, then initializes a clock 
+;                     /32 timer with interrupts enabled
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   None
+;
+; Input:              None
+; Ouput:              Outputs port directions to the port direction registers 
+;                     for port C and port D
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; :        TBD Bytes
+; 
+; Author:             Edward Speer
+; Last Modified:      5/13/23
+
+LEDBoardInit:
+
+    Set Port C as output 
+    Set Port D as output
+    Initialize a clock / 32 timer
+    enable timer interrupts
+    RETURN
+
+;Display Routines
+
+; InitDisplay
+;
+; Description:        This procedure initializes the variables used for display 
+;                     multiplexing
+;
+; Operation:          Resets the Multiplexing counter to the number of output 
+;                     options for the display mux.
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   MuxCount (W) - The display mux counter 
+;
+; Input:              None
+; Ouput:              None
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; :        TBD Bytes
+; 
+; Author:             Edward Speer
+; Last Modified:      5/13/23
+
+InitDisplay:
+
+    MuxCount = NumDisplays
+    RETURN
+
+
+; DisplayInterrupt
+;
+; Description:        This procedure is an event handler for the timer interrupt 
+;                     used to display Hexer game data on the 2 game board
+;                     displays.
+;
+; Operation:          On every clock interrupt, this handler is called, and
+;                     based on a counter, determines which set of muxed LEDs in
+;                     the display should be activated according to the muxing 
+;                     frequency, then displays data from the appropriate buffer, 
+;                     setting the display mux frequencies to activate the 
+;                     needed LEDs.
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   BoardBuffer (R) - the game data to be shown on the game
+;                                       board display
+;                     DispBuffer (R) - the data shown on the 7-segment display
+;                     MuxCount (R/W) - the counter keeping track of the mux 
+;                                      selection to make
+;
+; Input:              None
+; Ouput:              Outputs the display buffers and display select signals to 
+;                     ports C and D
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; :        TBD Bytes
+; 
+; Author:             Edward Speer
+; Last Modified:      5/13/23
+
+DisplayInterrupt:
+
+    SELECT WITH MuxCount 
+        CASE 7SegDig1:
+            Port D <- 7 segment digit 1
+            Pattern <- segment_table[DispBuffer[Digit 1]]
+            Port C <- Pattern 
+        CASE 7SegDig2:
+            Port D <- 7 segment digit 2
+            Pattern <- segment_table[DispBuffer[Digit 2]]
+            Port C <- Pattern 
+        CASE 7SegDig3:
+            Port D <- 7 segment digit 3
+            Pattern <- segment_table[DispBuffer[Digit 3]]
+            Port C <- Pattern 
+        CASE 7SegDig4:
+            Port D <- 7 segment digit 4
+            Pattern <- segment_table[DispBuffer[Digit 4]]
+            Port C <- Pattern 
+        CASE LEDs1:
+            Port D <- 15 LED Display 1
+            Pattern <- BoardBuffer[7..0]
+            Pattern[12] = 0
+            Port C <- Pattern 
+        CASE LEDs2:
+            Port D <- 15 LED Display 2
+            Pattern <- BoardBuffer[15..8]
+            Port C <- Pattern
+    ENDSELECT
+
+    IF MuxCount = LEDs2:
+        MuxCount = 7SegDig1
+    ELSE:
+        MuxCount = MuxCount - 1
+    
+    RETURN
+
+
+; ClearDisplay
+;
+; Description:        This procedure sets all LEDS in the game display to be off
+;                     including both the game board display and the 7 segment 
+;                     display.
+;
+; Operation:          Sets the data written to the board displays to all 0's, 
+;                     so that on the next interrupt and until new data is 
+;                     entered, the display will be blank (all LEDs off)
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   BoardBuffer (W) - the game data to be shown on the game
+;                                       board display
+;                     DispBuffer (W) - the data shown on the 7-segment display
+;
+; Input:              None
+; Ouput:              None
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; :        TBD Bytes
+; 
+; Author:             Edward Speer
+; Last Modified:      5/13/23
+
+ClearDisplay:
+
+    BoardBuffer = 0x0000
+    DispBuffer = 0x00
+    RETURN
+
+
+; DisplayHex
+;
+; Description:        This procedure sets the shared variable DsipBuffer to the 
+;                     value passed in so that it will then be displayed by the 
+;                     timer interrupt that muxes the display LEDS.
+;
+; Operation:          Sets the data written to the board displays to all 0's, 
+;                     so that on the next interrupt and until new data is 
+;                     entered, the display will be blank (all LEDs off)
+;
+; Arguments:          16 bit unsigned value to be shown on 7-segment in R16|R17
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   DispBuffer (W) - the data shown on the 7-segment display
+;
+; Input:              None
+; Ouput:              None
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; :        TBD Bytes
+; 
+; Author:             Edward Speer
+; Last Modified:      5/13/23
+
+DisplayHex:
+
+    DispBuffer <- R16|R17
+    DispBuffer[12] = 0
+
+
+; DisplayGameLEDs
+;
+; Description:        This procedure takes in a 16 bit mask and triggers the 
+;                     15 LED display to show the sequence indicated by the mask.
+;
+; Operation:          Writes the mask input into the function to the BoardBuffer 
+;                     shared variable so that it will be displayed by the 
+;                     display muxing event handler.
+;
+; Arguments:          16 bit mask to be displayed on the 15 LED display in 
+;                     R16|R17
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   BoardBuffer (W) - the game data to be shown on the game
+;                                       board display
+;
+; Input:              None
+; Ouput:              None
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; :        TBD Bytes
+; 
+; Author:             Edward Speer
+; Last Modified:      5/13/23
+
+DisplayGameLEDs:
+    
+    BoardBuffer <- R16|R17

@@ -1,0 +1,361 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;                                                                            ;
+;                         Speaker and SD Card Routines                       ;
+;                                 Code Outline                               ;
+;                 Microprocessor-Based Hexer Game (AVR version)              ;
+;                                                                            ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Hardware Initialization
+
+
+; SpeakerInit
+;
+; Description:        This procedure initializes the I/O ports needed to produce
+;                     tones on the speaker. After initialization, the speaker
+;                     speaker will be set up to be silent while being sent a low
+;                     signal.
+;
+; Operation:          Sets the data direction register for the speaker port 
+;                     (Port OC1A)
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   None
+;
+; Input:              None
+; Ouput:              Outputs port direction to OC1A 
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; 
+; Author:             Edward Speer
+; Last Modified:      5/24/23
+
+SpeakerInit: 
+
+       DDR_OC1a << OUTPUT 
+       RETURN 
+
+
+; SDInit
+;
+; Description:        This procedure initializes the SD card so that the system 
+;                     may read and write data to/from the card using SPI 
+;                     protocol. Assumes the SD card is of type 2. 
+;                     Also sets the built in SPI mode to enable SPI 
+;                     operations.
+;
+; Operation:          Activates built in SPI modes by writing enabling command 
+;                     to SPCR register, then sends the command which puts the 
+;                     card in SPI mode.
+;                     
+; Arguments:          None
+; Return Value:       0 in R16 if successfull, otherwise ERROR_CODE in R16
+;
+; Local Variables:    None
+; Shared Variables:   None
+;
+; Input:              None
+; Ouput:              Outputs SD controls on SD port
+;                     Outputs SPI enable signal to SPCR register
+;
+; Error Handling:     If an invalid or unexpected error is thrown by an SD card 
+;                     initialization command, then the function returns an error 
+;                     code constant in R16.
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; 
+; Author:             Edward Speer
+; Last Modified:      5/25/23
+
+SDInit:
+
+        SPCR << Disable global interrupts, enable SPI, select master first
+        SDSendCommand(CMD0 + CS select)
+        IF(SDGetResponse() != SPI Mode R1 Response)
+                RETURN ERROR_UNUSABLE_CARD
+        IF(SDGetResponse() != CCS 0)
+                RETURN ERROR_INCORRECT_CARD
+        ELSE
+                RETURN 1
+
+
+
+; Speaker Routines 
+
+; PlayNote
+;
+; Description:        This procedure plays a note at the passed frequency on the 
+;                     speaker. The tone generated is a square wave, and it is 
+;                     played until a new tone is triggered by a call to this 
+;                     function. A call to this routine with argument of 0 will 
+;                     result in turning off the speaker. 
+;                     Frequency range: 5-30 Hz
+;
+; Operation:          Check the frequency passed to ensure it is in the valid 
+;                     frequency range, and if not, turn off the speaker. If 
+;                     valid, set the output compare register for the timer and 
+;                     reset the counter to output the square wave with the right
+;                     frequency on the output compare port for timer 1.
+;
+; Arguments:          f (frequency to play) passed in R17|R16
+; Return Value:       None
+;
+; Local Variables:    CountMax - the value to set the output compare register to
+; Shared Variables:   None
+;
+; Input:              None
+; Ouput:              Output timer controls to TCCR1A and TCCR1B, and output 
+;                     the output compare value to OCRA1
+;
+; Error Handling:     Calls to the function with a frequency outside of the 
+;                     frequency change result in turning off the speaker
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; 
+; Author:             Edward Speer
+; Last Modified:      5/25/23
+
+PlayNote: 
+
+        IF (f < 5 OR f < 30000) THEN 
+                Turn off timer
+                Set PCRA1 low
+        ELSE 
+                CountMax = (8000000 / (2 * 8 * f)) - 1
+                Reset timer counter to 0
+                output compare register << CountMax
+                Set timer control register << toggle mode, clock/8 prescaler
+
+
+; SD Card Routines
+
+; ReadSDCard
+;
+; Description:        This procedure reads 2 time the number stored in R16 bytes
+;                     from the SD card block passed into R R20...R17 and stores
+;                     them at the address passed into Y (R29|R28), assuming 
+;                     there is enough free memory at the passed location.
+;
+; Operation:          Sends the SPI commands to the SD card to setup a read, 
+;                     then proceeds to shift the values stored in the card at 
+;                     the designated location in from the SPI interface
+;
+; Arguments:          Number of words to read passed in R16, SD block number 
+;                     passed in R20..R17, location to store data passed in Y
+; Return Value:       ERROR in R16 if not successful, else 1 in R16
+;
+; Local Variables:    None
+; Shared Variables:   None
+;
+; Input:              SD card data input to MISO
+; Ouput:              SD card commands output to MOSI
+;
+; Error Handling:     If a read fails, an error code is returned in R16
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; 
+; Author:             Edward Speer
+; Last Modified:      5/25/23
+
+ReadSDCard:
+    SDSendCommand(CMD16, n)   ;Set read size to number of words requested
+    IF(Reading 1 word) THEN
+        SDSendCommand(CMD17, b)    ;send command to read single word
+    ELSE
+        SDSendCommand(CMD18, b)    ;Command to read multi-words
+    If(SDGetResponse != Expected response token) THEN 
+        RETURN ERROR_CODE
+    SDWaitDataRdy()
+    IF CRC suffix correct
+        RETURN 1 
+    ELSE 
+        RETURN ERROR_CODE
+    
+
+; WriteSDCard
+;
+; Description:        This procedure writes 2 time the number stored in R16 bytes
+;                     to the SD card block passed into R R20...R17 from
+;                     the address passed into Y (R29|R28), assuming 
+;                     there is enough free memory at the passed location.
+;
+; Operation:          Sends the SPI commands to the SD card to setup a write, 
+;                     then proceeds to shift the stored values out to the card 
+;                     using SPI protocol.
+;
+; Arguments:          Number of words to read passed in R16, SD block number
+;                     in R20..R17, address of data to write is passed in Y
+; Return Value:       ERROR in R16 if not successful, else 1 in R16
+;
+; Local Variables:    None
+; Shared Variables:   None
+;
+; Input:              SD card input to MISO
+; Ouput:              SD card output to MOSI
+;
+; Error Handling:     If a read fails, an error code is returned in R16
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; 
+; Author:             Edward Speer
+; Last Modified:      5/25/23
+
+WriteSDCard:
+
+    WriteSDCard:
+    SDSendCommand(CMD16, n)   ;Set write size to number of words requested
+    MISO << data at p 
+    IF(Reading 1 word) THEN
+        SDSendCommand(CMD24, b)    ;send command to write single word
+    ELSE
+        SDSendCommand(CMD25, b)    ;Command to write multi-words
+    If(SDGetResponse != Expected response token) THEN 
+        RETURN ERROR_CODE
+    SDWaitBusy()
+        RETURN 1
+
+
+; SDWaitDataRdy
+;
+; Description:        This procedure waits until data being read from the SD 
+;                     card is transferred through SPI, then returns
+; Operation:          Waits until the SD card sends a response token, then
+;                     returns
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   None
+;
+; Input:              SD card input to MISO
+; Ouput:              
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; 
+; Author:             Edward Speer
+; Last Modified:      5/25/23
+
+SDWaitDataRdy:
+
+WHILE (No response from SD card) THEN 
+ENDWHILE
+
+
+; SDWaitDataRdy
+;
+; Description:        This procedure waits until the SD card is done writing 
+;                     data
+; Operation:          Waits until the SD card stops sending a busy signal, then 
+;                     returns
+;
+; Arguments:          None
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   None
+;
+; Input:              SD card input to MISO
+; Ouput:              
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; 
+; Author:             Edward Speer
+; Last Modified:      5/25/23
+
+SDGetResponse:
+
+WHILE (SDGetResponse() == BUSY) THEN 
+ENDWHILE
+
+
+; SDSendCommand
+;
+; Description:        This procedure sends a command to the SD card
+; Operation:          Sends the requested command out to MOSI
+;
+; Arguments:          Command requested pased into R20
+; Return Value:       None
+;
+; Local Variables:    None
+; Shared Variables:   None
+;
+; Input:              None
+; Ouput:              SDCard output to MOSI
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; 
+; Author:             Edward Speer
+; Last Modified:      5/25/23
+
+SDSendCommand:
+
+    MOSI << R20 
+    Send to SD card
+
+
+
+; SDGetResponse
+;
+; Description:        This procedure reads a response to a comand from the SD 
+;                     card.
+;
+; Arguments:          None
+; Return Value:       Response returned in R20
+;
+; Local Variables:    None
+; Shared Variables:   None
+;
+; Input:              SD card input to MISO
+; Ouput:              None
+;
+; Error Handling:     None
+;
+; Algorithms:         None
+; Data Structures:    None
+;
+; Registers Changed: None
+; 
+; Author:             Edward Speer
+; Last Modified:      5/25/23
+
+SDGetResponse:
+
+    receive from SD card
+    R20 << MISO
+    RETURN

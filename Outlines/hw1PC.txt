@@ -1,0 +1,173 @@
+;Hexer Game Switch Routines
+
+;Psuedo Code
+
+  ; InitSwitchVars
+  ;
+  ; Description:        This procedure initializes the switch debouncing 
+  ;                     variables
+  ; Operation:          The current switch pattern stored is reset to none 
+  ;                     active and the NewPattern flag is reset
+  ;
+  ; Arguments:          None
+  ; Return Value:       None
+  ;
+  ; Local Variables:    None
+  ; Shared Varibales:   NewPattern (Write Only) - flag indicating a new 
+  ;                       debounced pattern available
+  ;                     CurrPattern (Write Only)- The most recently debounced 
+  ;                       switch pattern
+  ;
+  ; Input:              The push button switch pattern detected from the 
+  ;                     switches
+  ; Ouput:              None
+  ;
+  ; Error Handling:     None
+  ;
+  ; Algorithms:         None
+  ; Data Structures:     CurrPattern is stored in 6 bits
+  ;                     NewPattern is stored in a single bit
+  ;
+  ; Registers Changed: None
+  ; :        TBD
+  ; 
+  ; Author:             Edward Speer
+  ; Last Modified:      4/29/23
+
+  InitSwitchVars()
+
+      NewPattern = 0
+      CurrPattern = [0, 0, 0, 0, 0, 0]
+
+  ; DebounceSwitch
+  ;
+  ; Description:        This procedure debounces the pressing of the push
+  ;                     button switches
+  ; Operation:          If a new debounced pattern is available, then 
+  ;                     CurrPattern is set to the pattern and SwitchAvailable is 
+  ;                     set
+  ;
+  ; Arguments:          None
+  ; Return Value:       None
+  ;
+  ; Local Variables:    None
+  ; Shared Varibales:   NewPattern - flag indicating a new debounced pattern
+  ;                     CurrPattern - The current debounced switch pattern
+  ;
+  ; Input:              The push button switch pattern detected from the 
+  ;                     switches
+  ; Ouput:              None
+  ;
+  ; Error Handling:     None
+  ;
+  ; Algorithms:         Debouncing filters button presses by using a timed 
+  ;                     counter to ensure the button is pressed for a long
+  ;                     rnough time, by checking if the counter reaches a 
+  ;                     threshold
+  ; Data Structures:     CurrPattern is stored in an array of length 6
+  ;
+  ; Registers Changed: TBD
+  ; :        TBD
+  ; 
+  ; Author:             Edward Speer
+  ; Last Modified:      4/29/23
+
+  DebounceSwitch()
+      
+      IF (Pattern Changes) THEN
+          debounce_cntr = DEBOUNCE_TIME
+
+      ELSE
+          debounce_cntr = debounce_cntr - 1
+          
+          IF (debounce_cntr = 0) THEN 
+              NewPattern = 1
+              CurrPattern = switch pattern
+
+          ELSE IF (debounce_cntr < 0) THEN
+              debounce_cntr = 0
+
+          ENDIF
+
+      ENDIF
+
+  ; SwitchAvailable
+  ;
+  ; Description:        This procedure determines whether or not a new debounced
+  ;                     switch pattern is available.
+  ; Operation:          If a new debounced pattern is available, then 
+  ;                     the zero flag is reset, otherwise the zero flag is reset
+  ;
+  ; Arguments:          None
+  ; Return Value:       None
+  ;
+  ; Local Variables:    None
+  ; Shared Varibales:   NewPattern - flag indicating a new debounced pattern
+  ;
+  ; Input:              None
+  ; Ouput:              None
+  ;
+  ; Error Handling:     None
+  ;
+  ; Algorithms:         None
+  ; Data Structures:    None
+  ;
+  ; Registers Changed: TBD
+  ; :        TBD
+  ; 
+  ; Author:             Edward Speer
+  ; Last Modified:      4/29/23
+
+  SwitchAvailable()
+
+      IF (NewPattern) THEN 
+          reset Zero Flag
+     
+      ELSE
+          set Zero Flag
+
+      ENDIF
+
+  ; GetSwitches
+  ;
+  ; Description:        This procedure blocks until a new switch pattern is 
+  ;                     avaliable, then returns the new switch pattern.
+  ;                     GetSwitches contains critical code and must block
+  ;                     interrupts, as a new pattern should not be debounced 
+  ;                     before GetSwitches resets the NewPattern flag.
+  ; Operation:          If a new debounced pattern is available, then 
+  ;                     the zero flag is reset, otherwise the zero flag is reset
+  ;
+  ; Arguments:          None
+  ; Return Value:       None
+  ;
+  ; Local Variables:    None
+  ; Shared Varibales:   CurrPattern - The current debounced switch pattern
+  ;
+  ; Input:              None
+  ; Ouput:              None
+  ;
+  ; Error Handling:     None
+  ;
+  ; Algorithms:         None
+  ; Data Structures:    None
+  ;
+  ; Registers Changed: TBD
+  ; :        TBD
+  ; 
+  ; Author:             Edward Speer
+  ; Last Modified:      4/29/23
+
+  GetSwitches()
+
+    REPEAT
+        SwitchAvailable()
+    UNTIL (Zero Flag reset)
+    DisableInterrupts()
+    retVal = 0
+    NewPattern = False
+    RestoreInterrupts()
+    RETURN CurrPattern
+
+
+    
